@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dravik — Ops Intelligence</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg-0: #070b0b; --bg-1: #0d1414; --bg-2: #111a1a; --bg-3: #162020; --bg-card: #0f1919;
+      --border: #1e2e2e; --border-bright: #2a3f3f;
+      --cyan: #00c8c8; --cyan-dim: #007a7a; --cyan-glow: rgba(0,200,200,0.12);
+      --amber: #f59e0b; --amber-dim: rgba(245,158,11,0.15);
+      --red: #ef4444; --red-dim: rgba(239,68,68,0.15);
+      --green: #10b981; --green-dim: rgba(16,185,129,0.15);
+      --text-0: #e8f0f0; --text-1: #a0b8b8; --text-2: #5a7878;
+      --font: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+    }
+    html, body, #root { height: 100%; background: var(--bg-0); color: var(--text-0); font-family: var(--font); }
+    ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: var(--bg-1); } ::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+    .app { display: flex; height: 100vh; overflow: hidden; }
+    .sidebar { width: 240px; min-width: 240px; background: var(--bg-1); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+    .sidebar-logo { padding: 20px 20px 16px; border-bottom: 1px solid var(--border); }
+    .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--cyan), var(--cyan-dim)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: var(--bg-0); }
+    .logo-name { font-size: 15px; font-weight: 700; color: var(--text-0); letter-spacing: 0.04em; }
+    .logo-sub { font-size: 9px; font-weight: 500; color: var(--cyan); letter-spacing: 0.15em; text-transform: uppercase; }
+    .sidebar-tenant { padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer; position: relative; }
+    .tenant-label { font-size: 10px; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+    .tenant-name { font-size: 13px; color: var(--text-0); font-weight: 500; display: flex; align-items: center; justify-content: space-between; }
+    .tenant-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px; margin-top: 4px; z-index: 100; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+    .tenant-option { padding: 10px 14px; cursor: pointer; font-size: 13px; color: var(--text-1); display: flex; align-items: center; gap: 8px; }
+    .tenant-option:hover { background: var(--bg-3); color: var(--text-0); }
+    .tenant-option.active { color: var(--cyan); }
+    .tenant-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+    .sidebar-nav { flex: 1; overflow-y: auto; padding: 12px 0; }
+    .nav-section-label { font-size: 9px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.15em; padding: 12px 16px 6px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 16px; font-size: 13px; color: var(--text-1); cursor: pointer; border: none; background: none; width: 100%; text-align: left; border-left: 2px solid transparent; transition: all 0.15s; }
+    .nav-item:hover { color: var(--text-0); background: var(--bg-2); }
+    .nav-item.active { color: var(--cyan); background: var(--cyan-glow); border-left-color: var(--cyan); }
+    .nav-icon { font-size: 14px; width: 18px; text-align: center; opacity: 0.8; }
+    .nav-badge { margin-left: auto; background: var(--red); color: white; font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 10px; }
+    .nav-badge.amber { background: var(--amber); color: var(--bg-0); }
+    .sidebar-footer { border-top: 1px solid var(--border); padding: 12px 16px; }
+    .user-row { display: flex; align-items: center; gap: 10px; }
+    .user-avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, var(--cyan-dim), var(--bg-3)); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: var(--cyan); flex-shrink: 0; }
+    .user-name { font-size: 12px; font-weight: 500; color: var(--text-0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-role { font-size: 10px; color: var(--text-2); }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); flex-shrink: 0; }
+    .logout-btn { background: none; border: none; color: var(--text-2); font-size: 11px; cursor: pointer; margin-top: 8px; padding: 0; }
+    .logout-btn:hover { color: var(--red); }
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar { height: 52px; min-height: 52px; background: var(--bg-1); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 16px; }
+    .breadcrumb { display: flex; align-items: center; gap: 8px; flex: 1; }
+    .breadcrumb-item { font-size: 13px; color: var(--text-2); }
+    .breadcrumb-sep { color: var(--border-bright); font-size: 12px; }
+    .breadcrumb-current { color: var(--text-0); font-weight: 500; }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .sync-badge { display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: var(--mono); padding: 4px 10px; border-radius: 20px; border: 1px solid; }
+    .sync-badge.live { color: var(--green); border-color: rgba(16,185,129,0.3); background: var(--green-dim); }
+    .sync-badge.error { color: var(--red); border-color: rgba(239,68,68,0.3); background: var(--red-dim); }
+    .sync-badge.loading { color: var(--amber); border-color: rgba(245,158,11,0.3); background: var(--amber-dim); }
+    .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .sync-dot.pulse { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .btn { display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid; transition: all 0.15s; font-family: var(--font); }
+    .btn-ghost { background: transparent; color: var(--text-1); border-color: var(--border); }
+    .btn-ghost:hover { color: var(--text-0); border-color: var(--border-bright); background: var(--bg-2); }
+    .btn-primary { background: var(--cyan); color: var(--bg-0); border-color: var(--cyan); font-weight: 600; }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-danger { background: var(--red-dim); color: var(--red); border-color: rgba(239,68,68,0.3); }
+    .page { flex: 1; overflow-y: auto; padding: 28px; }
+    .page-header { margin-bottom: 24px; }
+    .page-eyebrow { font-size: 10px; font-weight: 600; color: var(--cyan); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 8px; }
+    .page-title { font-size: 28px; font-weight: 700; color: var(--text-0); line-height: 1.15; }
+    .page-sub { font-size: 13px; color: var(--text-2); margin-top: 6px; }
+    .stat-row { display: grid; gap: 14px; margin-bottom: 20px; }
+    .stat-row-4 { grid-template-columns: repeat(4, 1fr); }
+    .stat-row-3 { grid-template-columns: repeat(3, 1fr); }
+    .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; position: relative; overflow: hidden; }
+    .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: transparent; }
+    .stat-card.accent-cyan::before { background: var(--cyan); }
+    .stat-card.accent-amber::before { background: var(--amber); }
+    .stat-card.accent-red::before { background: var(--red); }
+    .stat-card.accent-green::before { background: var(--green); }
+    .stat-label { font-size: 10px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 10px; }
+    .stat-value { font-size: 32px; font-weight: 700; line-height: 1; margin-bottom: 6px; }
+    .stat-value.cyan { color: var(--cyan); } .stat-value.amber { color: var(--amber); } .stat-value.red { color: var(--red); } .stat-value.green { color: var(--green); } .stat-value.white { color: var(--text-0); }
+    .stat-meta { font-size: 11px; color: var(--text-2); }
+    .grid-main-side { display: grid; grid-template-columns: 1fr 360px; gap: 16px; margin-bottom: 16px; }
+    .panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+    .panel-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .panel-title { font-size: 11px; font-weight: 600; color: var(--text-1); text-transform: uppercase; letter-spacing: 0.12em; }
+    .panel-sub { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+    .panel-body { padding: 16px 20px; }
+    .risk-row { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+    .risk-row:last-child { border-bottom: none; }
+    .risk-row:hover { background: var(--bg-2); }
+    .risk-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .risk-dot.critical { background: var(--red); box-shadow: 0 0 6px var(--red); }
+    .risk-dot.high { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+    .risk-dot.medium { background: var(--cyan); }
+    .risk-dot.low { background: var(--text-2); }
+    .risk-info { flex: 1; min-width: 0; }
+    .risk-name { font-size: 13px; color: var(--text-0); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .risk-detail { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+    .action-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; border-left: 3px solid; transition: background 0.15s; }
+    .action-card:hover { background: var(--bg-3); }
+    .action-card.critical { border-left-color: var(--red); }
+    .action-card.high { border-left-color: var(--amber); }
+    .action-card.medium { border-left-color: var(--cyan); }
+    .action-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .action-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; padding: 2px 7px; border-radius: 4px; }
+    .action-badge.critical { background: var(--red-dim); color: var(--red); }
+    .action-badge.high { background: var(--amber-dim); color: var(--amber); }
+    .action-badge.medium { background: var(--cyan-glow); color: var(--cyan); }
+    .action-account { font-size: 11px; color: var(--text-2); }
+    .action-title { font-size: 13px; color: var(--text-0); font-weight: 500; margin-bottom: 4px; }
+    .action-reason { font-size: 12px; color: var(--text-2); line-height: 1.5; }
+    .action-footer { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+    .action-owner { font-size: 11px; color: var(--text-2); }
+    .action-owner span { color: var(--cyan); }
+    .action-cta { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--bg-0); background: var(--cyan); border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-family: var(--font); }
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th { font-size: 10px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.1em; padding: 10px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+    .data-table td { font-size: 13px; color: var(--text-1); padding: 12px 16px; border-bottom: 1px solid var(--border); }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: var(--bg-2); }
+    .data-table td.name { color: var(--text-0); font-weight: 500; }
+    .data-table td.mono { font-family: var(--mono); font-size: 12px; }
+    .health-bar { display: flex; align-items: center; gap: 8px; }
+    .health-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; max-width: 60px; }
+    .health-fill { height: 100%; border-radius: 2px; }
+    .health-value { font-family: var(--mono); font-size: 12px; font-weight: 600; min-width: 24px; }
+    .trend { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+    .trend.up { color: var(--green); background: var(--green-dim); }
+    .trend.down { color: var(--red); background: var(--red-dim); }
+    .trend.stable { color: var(--text-2); background: var(--bg-2); }
+    .pill { display: inline-flex; align-items: center; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; padding: 3px 9px; border-radius: 12px; }
+    .pill.active { background: var(--green-dim); color: var(--green); }
+    .pill.pending { background: var(--amber-dim); color: var(--amber); }
+    .pill.terminated { background: var(--red-dim); color: var(--red); }
+    .pill.open { background: var(--red-dim); color: var(--red); }
+    .pill.resolved { background: var(--green-dim); color: var(--green); }
+    .pill.complete { background: var(--green-dim); color: var(--green); }
+    .pill.incomplete { background: var(--red-dim); color: var(--red); }
+    .pill.low { background: var(--green-dim); color: var(--green); }
+    .pill.medium { background: var(--amber-dim); color: var(--amber); }
+    .pill.high { background: var(--red-dim); color: var(--amber); }
+    .pill.critical { background: var(--red-dim); color: var(--red); }
+    .score-ring { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; font-family: var(--mono); flex-shrink: 0; border: 2px solid; }
+    .score-ring.high { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+    .score-ring.medium { border-color: var(--amber); color: var(--amber); background: var(--amber-dim); }
+    .score-ring.low { border-color: var(--red); color: var(--red); background: var(--red-dim); }
+    .feed-item { display: flex; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--border); }
+    .feed-item:last-child { border-bottom: none; }
+    .feed-time { font-family: var(--mono); font-size: 10px; color: var(--text-2); min-width: 44px; padding-top: 2px; }
+    .feed-event { font-size: 12px; color: var(--text-1); line-height: 1.5; }
+    .feed-account { color: var(--text-0); font-weight: 500; }
+    /* Login */
+    .login-wrap { height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg-0); background-image: radial-gradient(ellipse at 50% 0%, rgba(0,200,200,0.06) 0%, transparent 60%); }
+    .login-box { width: 380px; background: var(--bg-1); border: 1px solid var(--border); border-radius: 14px; padding: 36px; }
+    .login-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
+    .login-logo-icon { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, var(--cyan), var(--cyan-dim)); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: var(--bg-0); }
+    .login-title { font-size: 22px; font-weight: 700; color: var(--text-0); }
+    .login-sub { font-size: 13px; color: var(--text-2); margin-top: 2px; }
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 12px; font-weight: 500; color: var(--text-2); margin-bottom: 6px; }
+    .field input { width: 100%; padding: 10px 14px; background: var(--bg-0); border: 1px solid var(--border); border-radius: 7px; color: var(--text-0); font-size: 14px; font-family: var(--font); outline: none; transition: border-color 0.15s; }
+    .field input:focus { border-color: var(--cyan); }
+    .login-btn { width: 100%; padding: 12px; background: var(--cyan); color: var(--bg-0); border: none; border-radius: 7px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 8px; font-family: var(--font); transition: opacity 0.15s; }
+    .login-btn:hover { opacity: 0.9; }
+    .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .login-error { font-size: 12px; color: var(--red); margin-top: 10px; text-align: center; }
+    .login-info { margin-top: 20px; padding: 14px; background: var(--bg-0); border-radius: 8px; border: 1px solid var(--border); }
+    .login-info-label { font-size: 10px; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+    /* Settings */
+    .settings-section { margin-bottom: 28px; }
+    .settings-label { font-size: 11px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 14px; }
+    .settings-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; }
+    .settings-row-label { font-size: 13px; color: var(--text-0); font-weight: 500; }
+    .settings-row-sub { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+    .settings-input { background: var(--bg-0); border: 1px solid var(--border); border-radius: 6px; padding: 7px 12px; font-size: 12px; font-family: var(--mono); color: var(--text-1); width: 280px; outline: none; }
+    .settings-input:focus { border-color: var(--cyan); color: var(--text-0); }
+    /* Admin */
+    .admin-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 12px; }
+    .admin-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 200; }
+    .modal { background: var(--bg-1); border: 1px solid var(--border); border-radius: 12px; padding: 28px; width: 440px; }
+    .modal-title { font-size: 16px; font-weight: 700; color: var(--text-0); margin-bottom: 20px; }
+    /* Loader */
+    .loader-wrap { display: flex; align-items: center; justify-content: center; padding: 48px; }
+    .loader { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border-bright); border-top-color: var(--cyan); animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 24px; text-align: center; }
+    .empty-icon { font-size: 32px; margin-bottom: 12px; opacity: 0.4; }
+    .empty-title { font-size: 14px; color: var(--text-1); font-weight: 500; margin-bottom: 6px; }
+    .empty-sub { font-size: 12px; color: var(--text-2); }
+    .tag { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: var(--cyan-glow); color: var(--cyan); margin-left: 8px; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef } = React;
+
+// ─── SUPABASE ──────────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://vmbzqullpmqlczhhmios.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtYnpxdWxscG1xbGN6aGhtaW9zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5OTM3ODksImV4cCI6MjA5NzU2OTc4OX0.Rfh-_e_0RZDOOcueF992KwmslvOcASphvbSDlaBmo20';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ─── MOCK DATA (fallback + demo) ───────────────────────────────────────────
+const MOCK = {
+  accounts: [
+    { id:'m1', name:'Greenfield Apartments', contract_status:'Active', health_score:92, health_trend:'Improving', monthly_value:3200, open_issue_count:0, days_since_contact:2, risk_level:'Low', recommended_action:'None required' },
+    { id:'m2', name:'Maple Grove Estates', contract_status:'Pending Renewal', health_score:75, health_trend:'Declining', monthly_value:4100, open_issue_count:2, days_since_contact:18, risk_level:'High', recommended_action:'Contact client before renewal deadline' },
+    { id:'m3', name:'Riverside Towers', contract_status:'Active', health_score:95, health_trend:'Stable', monthly_value:5200, open_issue_count:0, days_since_contact:3, risk_level:'Low', recommended_action:'None required' },
+    { id:'m4', name:'Lakeside Residences', contract_status:'Active', health_score:89, health_trend:'Improving', monthly_value:3600, open_issue_count:1, days_since_contact:7, risk_level:'Medium', recommended_action:'Verify unauthorized access issue resolved' },
+    { id:'m5', name:'Willow Park Homes', contract_status:'Pending Renewal', health_score:73, health_trend:'Declining', monthly_value:2700, open_issue_count:3, days_since_contact:22, risk_level:'High', recommended_action:'Schedule supervisor inspection before renewal' },
+    { id:'m6', name:'Summit View Lofts', contract_status:'Active', health_score:97, health_trend:'Improving', monthly_value:6100, open_issue_count:0, days_since_contact:1, risk_level:'Low', recommended_action:'None required' },
+  ],
+  crews: [
+    { id:'c1', name:'Team Alpha', lead_name:'Marcus Johnson', reliability_score:94, jobs_completed:142, issues_reported:3, active:true, risk_level:'Low', ai_summary:'Consistently high performer. No corrective action needed.' },
+    { id:'c2', name:'Team Beta', lead_name:'Sarah Chen', reliability_score:81, jobs_completed:98, issues_reported:9, active:true, risk_level:'Medium', ai_summary:'Recent spike in issues. Schedule supervisor check-in.' },
+    { id:'c3', name:'Team Gamma', lead_name:'Luis Reyes', reliability_score:67, jobs_completed:76, issues_reported:18, active:true, risk_level:'High', ai_summary:'Reliability declining. Requires immediate retraining review.' },
+    { id:'c4', name:'Team Delta', lead_name:'Kim Park', reliability_score:91, jobs_completed:115, issues_reported:5, active:true, risk_level:'Low', ai_summary:'Strong performer. Minor closeout documentation gaps.' },
+  ],
+  issues: [
+    { id:'i1', description:'Unauthorized access attempt by crew member', severity:'Critical', status:'Open', days_open:3, risk_level:'Critical', recommended_action:'Remove crew from account immediately. File incident report.', accounts:{name:'Lakeside Residences'} },
+    { id:'i2', description:'Delayed delivery of office supplies impacting client', severity:'High', status:'Open', days_open:12, risk_level:'High', recommended_action:'Assign supervisor inspection within 24h', accounts:{name:'Maple Grove Estates'} },
+    { id:'i3', description:'Power outage — crew failed to report to management', severity:'High', status:'Open', days_open:8, risk_level:'High', recommended_action:'Crew debrief required. Update emergency protocol.', accounts:{name:'Willow Park Homes'} },
+    { id:'i4', description:"Women's RR not completed during evening service", severity:'Medium', status:'Open', days_open:1, risk_level:'Medium', recommended_action:'Closeout verification required next service', accounts:{name:'Sunset Villas'} },
+    { id:'i5', description:'Floors not mopped in lobby — crew oversight', severity:'Low', status:'Resolved', days_open:0, risk_level:'Low', recommended_action:'Resolved — documented', accounts:{name:'Riverside Towers'} },
+  ],
+  closeouts: [
+    { id:'cl1', service_date:'2026-06-20', completion_status:'Complete', crew_confidence:95, photos_submitted:8, ai_analysis:'Full service completed. All areas verified. No issues detected.', accounts:{name:'Greenfield Apartments'}, crews:{name:'Team Alpha'} },
+    { id:'cl2', service_date:'2026-06-20', completion_status:'Complete', crew_confidence:91, photos_submitted:6, ai_analysis:'Service complete. Minor documentation gap on supply room. No client impact.', accounts:{name:'Summit View Lofts'}, crews:{name:'Team Delta'} },
+    { id:'cl3', service_date:'2026-06-19', completion_status:'Incomplete', crew_confidence:62, photos_submitted:3, ai_analysis:'Partial closeout submitted. Crew confidence low. Requires follow-up.', accounts:{name:'Sunset Villas'}, crews:{name:'Team Beta'} },
+    { id:'cl4', service_date:'2026-06-19', completion_status:'Incomplete', crew_confidence:44, photos_submitted:1, ai_analysis:'Critical gaps in closeout. High risk of client complaint.', accounts:{name:'Willow Park Homes'}, crews:{name:'Team Gamma'} },
+  ],
+};
+
+// ─── HELPERS ───────────────────────────────────────────────────────────────
+const hColor = s => s >= 85 ? 'var(--green)' : s >= 70 ? 'var(--amber)' : 'var(--red)';
+const hClass = s => s >= 85 ? 'high' : s >= 70 ? 'medium' : 'low';
+const tIcon  = t => t === 'Improving' ? '↑' : t === 'Declining' ? '↓' : '→';
+const tClass = t => t === 'Improving' ? 'up' : t === 'Declining' ? 'down' : 'stable';
+const sClass = s => ({ 'Active':'active','Pending Renewal':'pending','Terminated':'terminated','Open':'open','Resolved':'resolved','Complete':'complete','Incomplete':'incomplete' }[s] || '');
+const rClass = r => (r||'').toLowerCase();
+const $     = n => '$' + (n||0).toLocaleString();
+const initials = name => name ? name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2) : '?';
+
+// ─── AUTH HOOK ─────────────────────────────────────────────────────────────
+function useAuth() {
+  const [session, setSession] = useState(undefined); // undefined = loading
+  const [profile, setProfile] = useState(null);
+  const [tenant, setTenant] = useState(null);
+
+  useEffect(() => {
+    sb.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) loadProfile(session.user.id);
+    });
+    const { data: { subscription } } = sb.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) loadProfile(session.user.id);
+      else { setProfile(null); setTenant(null); }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  async function loadProfile(userId) {
+    const { data: prof } = await sb.from('profiles').select('*, tenants(*)').eq('id', userId).single();
+    if (prof) {
+      setProfile(prof);
+      setTenant(prof.tenants);
+    }
+  }
+
+  async function signIn(email, password) {
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    return error;
+  }
+
+  async function signOut() {
+    await sb.auth.signOut();
+  }
+
+  return { session, profile, tenant, signIn, signOut, loadProfile };
+}
+
+// ─── DATA HOOK ─────────────────────────────────────────────────────────────
+function useData(tenant, isDemo) {
+  const [data, setData] = useState(null);
+  const [status, setStatus] = useState('loading');
+  const [lastSync, setLastSync] = useState(null);
+  const [lastScored, setLastScored] = useState(null);
+
+  const load = useCallback(async () => {
+    if (isDemo) { setData(MOCK); setStatus('live'); setLastSync(new Date()); return; }
+    if (!tenant) return;
+    setStatus('loading');
+    try {
+      const tid = tenant.id;
+      const [accts, crews, issues, closeouts] = await Promise.all([
+        sb.from('accounts').select('*').eq('tenant_id', tid).order('health_score'),
+        sb.from('crews').select('*').eq('tenant_id', tid).order('reliability_score'),
+        sb.from('issues').select('*, accounts(name)').eq('tenant_id', tid).order('created_at', {ascending:false}),
+        sb.from('closeouts').select('*, accounts(name), crews(name)').eq('tenant_id', tid).order('service_date', {ascending:false}).limit(20),
+      ]);
+      if (accts.error) throw accts.error;
+      const accounts = accts.data || [];
+      const scored = accounts.map(a => a.updated_at).filter(Boolean).sort().reverse()[0];
+      if (scored) setLastScored(new Date(scored));
+      setData({ accounts, crews: crews.data || [], issues: issues.data || [], closeouts: closeouts.data || [] });
+      setLastSync(new Date());
+      setStatus('live');
+    } catch (err) {
+      console.error('Data load failed:', err);
+      setData(MOCK);
+      setStatus('error');
+    }
+  }, [tenant, isDemo]);
+
+  useEffect(() => { load(); const t = setInterval(load, 60000); return () => clearInterval(t); }, [load]);
+  return { data, status, lastSync, lastScored, refresh: load };
+}
+
+// ─── LOGIN PAGE ────────────────────────────────────────────────────────────
+function Login({ signIn }) {
+  const [email, setEmail] = useState('');
+  const [pass, setPass]   = useState('');
+  const [err, setErr]     = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function submit() {
+    if (!email || !pass) { setErr('Enter email and password.'); return; }
+    setLoading(true); setErr('');
+    const error = await signIn(email.trim(), pass.trim());
+    if (error) setErr(error.message || 'Login failed. Check credentials.');
+    setLoading(false);
+  }
+
+  const onKey = e => e.key === 'Enter' && submit();
+
+  return (
+    <div className="login-wrap">
+      <div className="login-box">
+        <div className="login-logo">
+          <div className="login-logo-icon">D</div>
+          <div><div className="login-title">Dravik</div><div className="login-sub">Ops Intelligence Platform</div></div>
+        </div>
+        <div className="field"><label>Email</label><input type="text" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={onKey} placeholder="you@company.com" autoFocus /></div>
+        <div className="field"><label>Password</label><input type="password" value={pass} onChange={e=>setPass(e.target.value)} onKeyDown={onKey} placeholder="••••••••" /></div>
+        <button className="login-btn" onClick={submit} disabled={loading}>{loading ? 'Signing in…' : 'Sign in to Dravik'}</button>
+        {err && <div className="login-error">{err}</div>}
+        <div className="login-info">
+          <div className="login-info-label">First time? Create an account in Supabase Auth, then assign a tenant_id in the profiles table.</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── NAV CONFIG ────────────────────────────────────────────────────────────
+const NAV = [
+  { id:'dashboard', label:'Executive Dashboard', icon:'⊞' },
+  { id:'accounts',  label:'Accounts Intelligence', icon:'◫', badge: d => d?.accounts?.filter(a=>['High','Critical'].includes(a.risk_level)).length },
+  { id:'crew',      label:'Crew Intelligence', icon:'◈' },
+  { id:'issues',    label:'Operational Issues', icon:'◉', badge: d => d?.issues?.filter(i=>i.status==='Open').length },
+  { id:'closeouts', label:'Closeout Analysis', icon:'◷' },
+  { id:'actions',   label:'AI Recommendations', icon:'✦', badge: d => d?.issues?.filter(i=>i.status==='Open' && ['High','Critical'].includes(i.risk_level)).length, badgeColor:'amber' },
+  { id:'admin',     label:'Client Admin', icon:'◧', adminOnly: true },
+  { id:'settings',  label:'Settings', icon:'◌' },
+];
+
+// ─── SIDEBAR ───────────────────────────────────────────────────────────────
+function Sidebar({ page, onNav, tenant, allTenants, onSwitchTenant, profile, data, onSignOut }) {
+  const [open, setOpen] = useState(false);
+  const isAdmin = profile?.role === 'admin';
+
+  return (
+    <div className="sidebar">
+      <div className="sidebar-logo" style={{display:'flex',alignItems:'center',gap:10}}>
+        <div className="logo-icon">D</div>
+        <div><div className="logo-name">DRAVIK</div><div className="logo-sub">Ops Intelligence</div></div>
+      </div>
+
+      {tenant && (
+        <div className="sidebar-tenant" onClick={()=>setOpen(o=>!o)}>
+          <div className="tenant-label">Active Client</div>
+          <div className="tenant-name">{tenant.name} <span style={{color:'var(--text-2)',fontSize:11}}>{open?'▲':'▼'}</span></div>
+          {open && allTenants.length > 1 && (
+            <div className="tenant-dropdown">
+              {allTenants.map(t=>(
+                <div key={t.id} className={`tenant-option ${t.id===tenant.id?'active':''}`}
+                  onClick={e=>{e.stopPropagation();onSwitchTenant(t);setOpen(false);}}>
+                  <div className="tenant-dot"/>{t.name}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <nav className="sidebar-nav">
+        <div className="nav-section-label">Intelligence</div>
+        {NAV.filter(n => !n.adminOnly || isAdmin).map(item => {
+          const count = item.badge ? (item.badge(data)||0) : 0;
+          return (
+            <button key={item.id} className={`nav-item ${page===item.id?'active':''}`} onClick={()=>onNav(item.id)}>
+              <span className="nav-icon">{item.icon}</span>
+              {item.label}
+              {count > 0 && <span className={`nav-badge ${item.badgeColor||''}`}>{count}</span>}
+            </button>
+          );
+        })}
+      </nav>
+
+      <div className="sidebar-footer">
+        <div className="user-row">
+          <div className="user-avatar">{initials(profile?.full_name||'User')}</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div className="user-name">{profile?.full_name||'User'}</div>
+            <div className="user-role">{profile?.role||'manager'}</div>
+          </div>
+          <div className="status-dot"/>
+        </div>
+        <button className="logout-btn" onClick={onSignOut}>Sign out</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── TOPBAR ────────────────────────────────────────────────────────────────
+function Topbar({ page, status, lastSync, lastScored, onRefresh }) {
+  const labels = { dashboard:'Executive Dashboard', accounts:'Accounts Intelligence', crew:'Crew Intelligence', issues:'Operational Issues', closeouts:'Closeout Analysis', actions:'AI Recommendations', admin:'Client Admin', settings:'Settings' };
+  const sc = status === 'live' ? 'live' : status === 'error' ? 'error' : 'loading';
+  const sl = status === 'live' ? 'LIVE · Supabase' : status === 'error' ? 'OFFLINE · mock data' : 'SYNCING…';
+  const fmtTime = d => d ? d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : null;
+  const fmtDate = d => d ? d.toLocaleDateString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : null;
+  return (
+    <div className="topbar">
+      <div className="breadcrumb">
+        <span className="breadcrumb-item">Dravik</span>
+        <span className="breadcrumb-sep">/</span>
+        <span className="breadcrumb-current">{labels[page]}</span>
+      </div>
+      <div className="topbar-right">
+        {lastScored && (
+          <div style={{fontSize:11,color:'var(--text-2)',fontFamily:'var(--mono)',display:'flex',alignItems:'center',gap:5}}>
+            <span style={{color:'var(--cyan-dim)'}}>◈</span>
+            Last scored: <span style={{color:'var(--text-1)'}}>{fmtDate(lastScored)}</span>
+          </div>
+        )}
+        {lastSync && (
+          <div style={{fontSize:11,color:'var(--text-2)',fontFamily:'var(--mono)'}}>
+            Fetched: <span style={{color:'var(--text-1)'}}>{fmtTime(lastSync)}</span>
+          </div>
+        )}
+        <div className={`sync-badge ${sc}`}><div className={`sync-dot ${status==='live'?'pulse':''}`}/>{sl}</div>
+        <button className="btn btn-ghost" onClick={onRefresh}>↻ Refresh</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── DASHBOARD ─────────────────────────────────────────────────────────────
+function DashboardPage({ data }) {
+  if (!data) return <div className="loader-wrap"><div className="loader"/></div>;
+  const mrr = data.accounts.reduce((s,a)=>s+(a.monthly_value||0),0);
+  const atRiskMRR = data.accounts.filter(a=>['High','Critical'].includes(a.risk_level)).reduce((s,a)=>s+(a.monthly_value||0),0);
+  const openIssues = data.issues.filter(i=>i.status==='Open');
+  const avgH = data.accounts.length ? Math.round(data.accounts.reduce((s,a)=>s+(a.health_score||0),0)/data.accounts.length) : 0;
+  const priorityActions = data.issues.filter(i=>i.status==='Open'&&['High','Critical'].includes(i.risk_level));
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <div className="page-eyebrow">Command Center</div>
+        <div className="page-title">Operations Intelligence</div>
+        <div className="page-sub">AI-powered risk and retention overview across your portfolio.</div>
+      </div>
+      <div className="stat-row stat-row-4">
+        <div className="stat-card accent-cyan"><div className="stat-label">Portfolio MRR</div><div className="stat-value cyan">{$(mrr)}</div><div className="stat-meta">{data.accounts.length} accounts</div></div>
+        <div className="stat-card accent-red"><div className="stat-label">At-Risk Revenue</div><div className="stat-value red">{$(atRiskMRR)}</div><div className="stat-meta">{data.accounts.filter(a=>['High','Critical'].includes(a.risk_level)).length} accounts flagged</div></div>
+        <div className="stat-card accent-amber"><div className="stat-label">Open Issues</div><div className="stat-value amber">{openIssues.length}</div><div className="stat-meta">{openIssues.filter(i=>i.severity==='Critical').length} critical</div></div>
+        <div className="stat-card accent-green"><div className="stat-label">Avg Health Score</div><div className="stat-value green">{avgH}</div><div className="stat-meta">0–100 composite</div></div>
+      </div>
+      <div className="grid-main-side">
+        <div>
+          <div className="panel">
+            <div className="panel-header"><div><div className="panel-title">Priority Actions</div><div className="panel-sub">Act now to protect revenue.</div></div><span style={{fontSize:11,color:'var(--text-2)'}}>{priorityActions.length} pending</span></div>
+            <div style={{padding:'12px 16px'}}>
+              {priorityActions.length === 0 ? <div className="empty-state"><div className="empty-icon">✓</div><div className="empty-title">All clear</div></div>
+              : priorityActions.slice(0,5).map(i=>(
+                <div key={i.id} className={`action-card ${rClass(i.risk_level)}`}>
+                  <div className="action-header">
+                    <span className={`action-badge ${rClass(i.risk_level)}`}>{i.risk_level}</span>
+                    <span className="action-account">{i.accounts?.name}</span>
+                  </div>
+                  <div className="action-title">{i.recommended_action}</div>
+                  <div className="action-reason">{i.description}</div>
+                  <div className="action-footer">
+                    <span style={{fontSize:11,color:'var(--text-2)'}}>Open {i.days_open}d</span>
+                    <button className="action-cta">Assign →</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div>
+          <div className="panel" style={{marginBottom:16}}>
+            <div className="panel-header"><div className="panel-title">Portfolio Health</div></div>
+            <div className="panel-body">
+              {[
+                {label:'Avg Account Health', val:avgH, color:'var(--green)'},
+                {label:'Crew Reliability', val:data.crews.filter(c=>c.active).length ? Math.round(data.crews.filter(c=>c.active).reduce((s,c)=>s+(c.reliability_score||0),0)/data.crews.filter(c=>c.active).length) : 0, color:'var(--cyan)'},
+                {label:'Issue Resolution', val:data.issues.length ? Math.round((data.issues.filter(i=>i.status==='Resolved').length/data.issues.length)*100) : 0, color:'var(--amber)'},
+              ].map(m=>(
+                <div key={m.label} style={{marginBottom:14}}>
+                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+                    <span style={{fontSize:11,color:'var(--text-2)'}}>{m.label}</span>
+                    <span style={{fontFamily:'var(--mono)',fontSize:12,fontWeight:600,color:m.color}}>{m.val}</span>
+                  </div>
+                  <div style={{height:4,background:'var(--border)',borderRadius:2,overflow:'hidden'}}>
+                    <div style={{height:'100%',width:m.val+'%',background:m.color,borderRadius:2}}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="panel">
+            <div className="panel-header"><div className="panel-title">Accounts Needing Attention</div></div>
+            {data.accounts.filter(a=>['High','Critical'].includes(a.risk_level)).slice(0,5).map(a=>(
+              <div key={a.id} className="risk-row">
+                <div className={`risk-dot ${rClass(a.risk_level)}`}/>
+                <div className="risk-info">
+                  <div className="risk-name">{a.name}</div>
+                  <div className="risk-detail">{a.open_issue_count} issues · {a.days_since_contact}d no contact</div>
+                </div>
+                <div style={{fontFamily:'var(--mono)',fontSize:13,fontWeight:600,color:hColor(a.health_score)}}>{a.health_score}</div>
+              </div>
+            ))}
+            {data.accounts.filter(a=>['High','Critical'].includes(a.risk_level)).length === 0 &&
+              <div className="empty-state"><div className="empty-icon">✓</div><div className="empty-title">No at-risk accounts</div></div>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ACCOUNTS ──────────────────────────────────────────────────────────────
+function AccountsPage({ data }) {
+  const [filter, setFilter] = useState('All');
+  if (!data) return <div className="loader-wrap"><div className="loader"/></div>;
+  const all = data.accounts;
+  const filtered = filter === 'All' ? all : all.filter(a=>a.contract_status===filter);
+  const mrr = all.reduce((s,a)=>s+(a.monthly_value||0),0);
+  const atRisk = all.filter(a=>['High','Critical'].includes(a.risk_level));
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <div className="page-eyebrow">Accounts Intelligence</div>
+        <div className="page-title">{all.length} accounts under management</div>
+        <div className="page-sub">Health scoring, retention risk, and engagement signals.</div>
+      </div>
+      <div className="stat-row stat-row-4">
+        <div className="stat-card accent-cyan"><div className="stat-label">Monthly Revenue</div><div className="stat-value cyan">{$(mrr)}</div></div>
+        <div className="stat-card accent-green"><div className="stat-label">Avg Health</div><div className="stat-value green">{all.length?Math.round(all.reduce((s,a)=>s+(a.health_score||0),0)/all.length):0}</div></div>
+        <div className="stat-card accent-red"><div className="stat-label">At-Risk Value</div><div className="stat-value red">{$(atRisk.reduce((s,a)=>s+(a.monthly_value||0),0))}</div><div className="stat-meta">{atRisk.length} flagged</div></div>
+        <div className="stat-card accent-amber"><div className="stat-label">Improving</div><div className="stat-value amber">{all.filter(a=>a.health_trend==='Improving').length}</div></div>
+      </div>
+      <div className="panel">
+        <div className="panel-header">
+          <div className="panel-title">Account Portfolio</div>
+          <div style={{display:'flex',gap:6}}>
+            {['All','Active','Pending Renewal','Terminated'].map(s=>(
+              <button key={s} className={`btn ${filter===s?'btn-primary':'btn-ghost'}`} style={{padding:'4px 10px',fontSize:11}} onClick={()=>setFilter(s)}>{s}</button>
+            ))}
+          </div>
+        </div>
+        {filtered.length === 0
+          ? <div className="empty-state"><div className="empty-icon">◫</div><div className="empty-title">No accounts found</div><div className="empty-sub">Add accounts in Supabase or adjust the filter.</div></div>
+          : <div style={{overflowX:'auto'}}>
+              <table className="data-table">
+                <thead><tr><th>Account</th><th>Status</th><th>Health</th><th>Trend</th><th>MRR</th><th>Issues</th><th>Last Contact</th><th>Risk</th><th>Action</th></tr></thead>
+                <tbody>
+                  {filtered.map(a=>(
+                    <tr key={a.id}>
+                      <td className="name">{a.name}</td>
+                      <td><span className={`pill ${sClass(a.contract_status)}`}>{a.contract_status}</span></td>
+                      <td><div className="health-bar"><div className="health-track"><div className="health-fill" style={{width:(a.health_score||0)+'%',background:hColor(a.health_score)}}/></div><span className="health-value" style={{color:hColor(a.health_score)}}>{a.health_score}</span></div></td>
+                      <td><span className={`trend ${tClass(a.health_trend)}`}>{tIcon(a.health_trend)} {a.health_trend}</span></td>
+                      <td className="mono">{$(a.monthly_value)}</td>
+                      <td style={{color:a.open_issue_count>0?'var(--amber)':'var(--text-2)'}}>{a.open_issue_count}</td>
+                      <td style={{color:a.days_since_contact>14?'var(--red)':a.days_since_contact>7?'var(--amber)':'var(--text-2)'}}>{a.days_since_contact}d ago</td>
+                      <td><span className={`pill ${rClass(a.risk_level)}`}>{a.risk_level}</span></td>
+                      <td style={{fontSize:12,color:'var(--text-1)',maxWidth:200}}>{a.recommended_action}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+        }
+      </div>
+    </div>
+  );
+}
+
+// ─── CREW ──────────────────────────────────────────────────────────────────
+function CrewPage({ data }) {
+  if (!data) return <div className="loader-wrap"><div className="loader"/></div>;
+  const active = data.crews.filter(c=>c.active);
+  const avgRel = active.length ? Math.round(active.reduce((s,c)=>s+(c.reliability_score||0),0)/active.length) : 0;
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <div className="page-eyebrow">Crew Intelligence</div>
+        <div className="page-title">{active.length} active crews</div>
+        <div className="page-sub">Reliability scoring across job throughput, issue rate, and closeout quality.</div>
+      </div>
+      <div className="stat-row stat-row-4">
+        <div className="stat-card accent-cyan"><div className="stat-label">Avg Reliability</div><div className="stat-value cyan">{avgRel}</div></div>
+        <div className="stat-card accent-green"><div className="stat-label">Jobs Completed</div><div className="stat-value green">{data.crews.reduce((s,c)=>s+(c.jobs_completed||0),0)}</div></div>
+        <div className="stat-card accent-amber"><div className="stat-label">Issues Reported</div><div className="stat-value amber">{data.crews.reduce((s,c)=>s+(c.issues_reported||0),0)}</div></div>
+        <div className="stat-card accent-red"><div className="stat-label">High Risk Crews</div><div className="stat-value red">{data.crews.filter(c=>['High','Critical'].includes(c.risk_level)).length}</div></div>
+      </div>
+      <div className="panel">
+        <div className="panel-header"><div className="panel-title">Crew Roster</div><div style={{fontSize:11,color:'var(--text-2)'}}>Sorted by risk</div></div>
+        {data.crews.length === 0
+          ? <div className="empty-state"><div className="empty-icon">◈</div><div className="empty-title">No crews found</div><div className="empty-sub">Add crews in Supabase to get started.</div></div>
+          : [...data.crews].sort((a,b)=>(a.reliability_score||0)-(b.reliability_score||0)).map(c=>(
+            <div key={c.id} className="risk-row" style={{padding:'16px 20px',alignItems:'flex-start'}}>
+              <div className={`score-ring ${hClass(c.reliability_score)}`}>{c.reliability_score}</div>
+              <div className="risk-info" style={{marginLeft:12}}>
+                <div className="risk-name">{c.name} <span style={{fontSize:11,color:'var(--text-2)',fontWeight:400}}>· {c.lead_name}</span></div>
+                <div className="risk-detail">{c.jobs_completed} jobs · {c.issues_reported} issues · {c.active?'Active':'Inactive'}</div>
+                {c.ai_summary && <div style={{fontSize:12,color:'var(--text-1)',marginTop:4,lineHeight:1.5}}>{c.ai_summary}</div>}
+              </div>
+              <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:6}}>
+                <span className={`pill ${c.active?'active':'terminated'}`}>{c.active?'Active':'Inactive'}</span>
+                <span className={`pill ${rClass(c.risk_level)}`}>{c.risk_level} risk</span>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  );
+}
+
+// ─── ISSUES ────────────────────────────────────────────────────────────────
+function IssuesPage({ data }) {
+  const [filter, setFilter] = useState('Open');
+  if (!data) return <div className="loader-wrap"><div className="loader"/></div>;
+  const filtered = filter === 'All' ? data.issues : data.issues.filter(i=>i.status===filter);
+  const openCrit = data.issues.filter(i=>i.status==='Open'&&i.severity==='Critical').length;
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <div className="page-eyebrow">Operational Issues</div>
+        <div className="page-title">{data.issues.filter(i=>i.status==='Open').length} active · {openCrit} critical</div>
+        <div className="page-sub">Live triage queue. AI scores severity and aging.</div>
+      </div>
+      <div className="stat-row stat-row-4">
+        <div className="stat-card"><div className="stat-label">Open</div><div className="stat-value white">{data.issues.filter(i=>i.status==='Open').length}</div></div>
+        <div className="stat-card accent-red"><div className="stat-label">Critical</div><div className="stat-value red">{openCrit}</div></div>
+        <div className="stat-card accent-amber"><div className="stat-label">High</div><div className="stat-value amber">{data.issues.filter(i=>i.status==='Open'&&i.severity==='High').length}</div></div>
+        <div className="stat-card accent-green"><div className="stat-label">Resolved</div><div className="stat-value green">{data.issues.filter(i=>i.status==='Resolved').length}</div></div>
+      </div>
+      <div className="panel">
+        <div className="panel-header">
+          <div className="panel-title">Incident Queue</div>
+          <div style={{display:'flex',gap:6}}>
+            {['Open','Resolved','All'].map(f=>(
+              <button key={f} className={`btn ${filter===f?'btn-primary':'btn-ghost'}`} style={{padding:'4px 10px',fontSize:11}} onClick={()=>setFilter(f)}>{f}</button>
+            ))}
+          </div>
+        </div>
+        {filtered.length === 0
+          ? <div className="empty-state"><div className="empty-icon">✓</div><div className="empty-title">All clear</div><div className="empty-sub">No issues match this filter.</div></div>
+          : filtered.map(i=>(
+            <div key={i.id} className="risk-row" style={{padding:'16px 20px',alignItems:'flex-start'}}>
+              <div className={`risk-dot ${rClass(i.risk_level)}`} style={{marginTop:5}}/>
+              <div className="risk-info" style={{marginLeft:8}}>
+                <div className="risk-name">{i.accounts?.name || 'Unknown Account'}</div>
+                <div style={{fontSize:13,color:'var(--text-1)',margin:'4px 0',lineHeight:1.5}}>{i.description}</div>
+                {i.recommended_action && <div style={{fontSize:12,color:'var(--cyan)',fontWeight:500}}>→ {i.recommended_action}</div>}
+              </div>
+              <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:6,minWidth:90}}>
+                <span className={`pill ${rClass(i.severity)}`}>{i.severity}</span>
+                <span className={`pill ${sClass(i.status)}`}>{i.status}</span>
+                <span style={{fontSize:11,color:i.days_open>7?'var(--red)':'var(--text-2)'}}>{i.days_open > 0 ? i.days_open+'d open' : 'Today'}</span>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  );
+}
+
+// ─── CLOSEOUTS ─────────────────────────────────────────────────────────────
+function CloseoutsPage({ data }) {
+  if (!data) return <div className="loader-wrap"><div className="loader"/></div>;
+  const completed = data.closeouts.filter(c=>c.completion_status==='Complete').length;
+  const avgConf = data.closeouts.length ? Math.round(data.closeouts.reduce((s,c)=>s+(c.crew_confidence||0),0)/data.closeouts.length) : 0;
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <div className="page-eyebrow">Closeout Analysis</div>
+        <div className="page-title">{data.closeouts.length} jobs in closeout window</div>
+        <div className="page-sub">AI benchmarks every closeout against completion and confidence.</div>
+      </div>
+      <div className="stat-row stat-row-4">
+        <div className="stat-card"><div className="stat-label">Total</div><div className="stat-value white">{data.closeouts.length}</div></div>
+        <div className="stat-card accent-green"><div className="stat-label">Complete</div><div className="stat-value green">{completed}</div></div>
+        <div className="stat-card accent-red"><div className="stat-label">Incomplete</div><div className="stat-value red">{data.closeouts.length-completed}</div></div>
+        <div className="stat-card accent-cyan"><div className="stat-label">Avg Confidence</div><div className="stat-value cyan">{avgConf}</div></div>
+      </div>
+      <div className="panel">
+        <div className="panel-header"><div className="panel-title">Recent Closeouts</div><div style={{fontSize:11,color:'var(--text-2)'}}>AI quality grading applied</div></div>
+        {data.closeouts.length === 0
+          ? <div className="empty-state"><div className="empty-icon">◷</div><div className="empty-title">No closeouts yet</div><div className="empty-sub">Closeouts will appear here as crews submit them.</div></div>
+          : data.closeouts.map(c=>(
+            <div key={c.id} className="risk-row" style={{padding:'16px 20px',alignItems:'flex-start'}}>
+              <div className={`score-ring ${hClass(c.crew_confidence)}`}>{c.crew_confidence}</div>
+              <div className="risk-info" style={{marginLeft:12}}>
+                <div className="risk-name">{c.accounts?.name} <span style={{fontSize:11,color:'var(--text-2)',fontWeight:400}}>· {c.crews?.name}</span></div>
+                <div style={{fontSize:11,color:'var(--text-2)',margin:'2px 0'}}>{c.service_date} · {c.photos_submitted} photos</div>
+                {c.ai_analysis && <div style={{fontSize:12,color:'var(--text-1)',marginTop:6,lineHeight:1.5,fontStyle:'italic'}}>"{c.ai_analysis}"</div>}
+              </div>
+              <span className={`pill ${sClass(c.completion_status)}`}>{c.completion_status}</span>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  );
+}
+
+// ─── AI RECOMMENDATIONS ────────────────────────────────────────────────────
+function ActionsPage({ data }) {
+  const [dismissed, setDismissed] = useState([]);
+  if (!data) return <div className="loader-wrap"><div className="loader"/></div>;
+  const actions = data.issues.filter(i=>i.status==='Open'&&!dismissed.includes(i.id));
+  const sorted = [...actions].sort((a,b)=>{const o={Critical:0,High:1,Medium:2,Low:3};return(o[a.risk_level]||3)-(o[b.risk_level]||3);});
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <div className="page-eyebrow">AI Recommendations</div>
+        <div className="page-title">{sorted.length} actions recommended</div>
+        <div className="page-sub">Dravik identifies risks and routes corrective action. Your decision required.</div>
+      </div>
+      {sorted.length === 0
+        ? <div className="panel"><div className="empty-state"><div className="empty-icon">✦</div><div className="empty-title">All caught up</div><div className="empty-sub">No open actions. Dravik is monitoring your portfolio.</div></div></div>
+        : sorted.map(i=>(
+          <div key={i.id} className={`action-card ${rClass(i.risk_level)}`}>
+            <div className="action-header">
+              <span className={`action-badge ${rClass(i.risk_level)}`}>{i.risk_level?.toUpperCase()}</span>
+              <span className="action-account">{i.accounts?.name}</span>
+              <span style={{marginLeft:'auto',fontSize:11,color:'var(--text-2)'}}>Open {i.days_open}d</span>
+            </div>
+            <div className="action-title">{i.recommended_action}</div>
+            <div className="action-reason">{i.description}</div>
+            <div className="action-footer">
+              <span style={{fontSize:11,color:'var(--text-2)'}}>Severity: <span style={{color:'var(--cyan)'}}>{i.severity}</span></span>
+              <div style={{marginLeft:'auto',display:'flex',gap:8}}>
+                <button style={{fontSize:11,color:'var(--text-2)',background:'transparent',border:'1px solid var(--border)',padding:'4px 10px',borderRadius:4,cursor:'pointer',fontFamily:'var(--font)'}} onClick={()=>setDismissed(d=>[...d,i.id])}>Dismiss</button>
+                <button className="action-cta">Assign Action →</button>
+              </div>
+            </div>
+          </div>
+        ))
+      }
+    </div>
+  );
+}
+
+// ─── ADMIN PAGE ────────────────────────────────────────────────────────────
+function AdminPage() {
+  const [tenants, setTenants] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState({ name:'', slug:'', webhook_url:'' });
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  useEffect(() => { loadTenants(); }, []);
+
+  async function loadTenants() {
+    setLoading(true);
+    const { data } = await sb.from('tenants').select('*').order('created_at');
+    setTenants(data || []);
+    setLoading(false);
+  }
+
+  async function createTenant() {
+    if (!form.name || !form.slug) { setMsg('Name and slug required.'); return; }
+    setSaving(true);
+    const { error } = await sb.from('tenants').insert({ name: form.name, slug: form.slug, webhook_url: form.webhook_url || null });
+    if (error) setMsg('Error: ' + error.message);
+    else { setMsg('Client created!'); setShowModal(false); setForm({name:'',slug:'',webhook_url:''}); loadTenants(); }
+    setSaving(false);
+  }
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <div className="page-eyebrow">Admin</div>
+        <div className="page-title">Client Management</div>
+        <div className="page-sub">Onboard and manage Dravik clients.</div>
+      </div>
+      {msg && <div style={{padding:'10px 14px',background:'var(--cyan-glow)',border:'1px solid var(--cyan-dim)',borderRadius:8,marginBottom:16,fontSize:13,color:'var(--cyan)'}}>{msg}</div>}
+      <div style={{display:'flex',justifyContent:'flex-end',marginBottom:16}}>
+        <button className="btn btn-primary" onClick={()=>setShowModal(true)}>+ Add Client</button>
+      </div>
+      {loading ? <div className="loader-wrap"><div className="loader"/></div>
+      : tenants.length === 0
+        ? <div className="panel"><div className="empty-state"><div className="empty-icon">◧</div><div className="empty-title">No clients yet</div><div className="empty-sub">Add your first client to get started.</div></div></div>
+        : tenants.map(t=>(
+          <div key={t.id} className="admin-card">
+            <div className="admin-card-header">
+              <div>
+                <div style={{fontSize:15,fontWeight:600,color:'var(--text-0)'}}>{t.name} <span className="tag">{t.slug}</span></div>
+                <div style={{fontSize:11,color:'var(--text-2)',marginTop:4}}>ID: {t.id}</div>
+              </div>
+              <span className="pill active">Active</span>
+            </div>
+            <div style={{fontSize:12,color:'var(--text-2)'}}>
+              Webhook: <span style={{fontFamily:'var(--mono)',color:'var(--text-1)'}}>{t.webhook_url || 'Not configured'}</span>
+            </div>
+            <div style={{fontSize:11,color:'var(--text-2)',marginTop:8}}>
+              Created: {new Date(t.created_at).toLocaleDateString()}
+            </div>
+          </div>
+        ))
+      }
+      {showModal && (
+        <div className="modal-overlay" onClick={()=>setShowModal(false)}>
+          <div className="modal" onClick={e=>e.stopPropagation()}>
+            <div className="modal-title">Add New Client</div>
+            <div className="field"><label>Company Name</label><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Kelsor Cleaning" /></div>
+            <div className="field"><label>Slug (unique ID)</label><input value={form.slug} onChange={e=>setForm({...form,slug:e.target.value.toLowerCase().replace(/\s+/g,'-')})} placeholder="kelsor-cleaning" /></div>
+            <div className="field"><label>n8n Webhook URL (optional)</label><input value={form.webhook_url} onChange={e=>setForm({...form,webhook_url:e.target.value})} placeholder="https://..." /></div>
+            {msg && <div style={{fontSize:12,color:'var(--red)',marginBottom:12}}>{msg}</div>}
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:8}}>
+              <button className="btn btn-ghost" onClick={()=>setShowModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={createTenant} disabled={saving}>{saving?'Saving…':'Create Client'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── SETTINGS ──────────────────────────────────────────────────────────────
+function SettingsPage({ tenant, profile }) {
+  const [saved, setSaved] = useState(false);
+  const [url, setUrl] = useState(tenant?.webhook_url || '');
+
+  async function saveWebhook() {
+    if (!tenant) return;
+    await sb.from('tenants').update({ webhook_url: url }).eq('id', tenant.id);
+    setSaved(true); setTimeout(()=>setSaved(false), 2000);
+  }
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <div className="page-eyebrow">Settings</div>
+        <div className="page-title">Configuration</div>
+        <div className="page-sub">{tenant?.name} workspace settings.</div>
+      </div>
+      <div className="settings-section">
+        <div className="settings-label">Data Connection</div>
+        <div className="settings-row">
+          <div><div className="settings-row-label">n8n Webhook URL</div><div className="settings-row-sub">Dravik polls this every 60s for operational data</div></div>
+          <div style={{display:'flex',gap:8}}>
+            <input className="settings-input" value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://your.n8n.cloud/webhook/..." />
+            <button className="btn btn-primary" onClick={saveWebhook}>{saved?'✓ Saved':'Save'}</button>
+          </div>
+        </div>
+        <div className="settings-row">
+          <div><div className="settings-row-label">Supabase Project</div><div className="settings-row-sub">Connected database</div></div>
+          <div style={{fontFamily:'var(--mono)',fontSize:11,color:'var(--cyan)'}}>vmbzqullpmqlczhhmios</div>
+        </div>
+      </div>
+      <div className="settings-section">
+        <div className="settings-label">Account</div>
+        <div className="settings-row"><div><div className="settings-row-label">Client Name</div></div><div style={{fontFamily:'var(--mono)',fontSize:12,color:'var(--text-1)'}}>{tenant?.name}</div></div>
+        <div className="settings-row"><div><div className="settings-row-label">Your Role</div></div><div style={{fontFamily:'var(--mono)',fontSize:12,color:'var(--text-1)'}}>{profile?.role}</div></div>
+        <div className="settings-row"><div><div className="settings-row-label">Tenant ID</div><div className="settings-row-sub">Do not share</div></div><div style={{fontFamily:'var(--mono)',fontSize:11,color:'var(--text-2)'}}>{tenant?.id}</div></div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ROOT ──────────────────────────────────────────────────────────────────
+function App() {
+  const { session, profile, tenant, signIn, signOut } = useAuth();
+  const [page, setPage] = useState('dashboard');
+  const [activeTenant, setActiveTenant] = useState(null);
+  const [allTenants, setAllTenants] = useState([]);
+  const isDemo = activeTenant?.slug === 'demo';
+
+  useEffect(() => {
+    if (tenant) { setActiveTenant(tenant); }
+  }, [tenant]);
+
+  useEffect(() => {
+    if (profile?.role === 'admin') {
+      sb.from('tenants').select('*').then(({data})=>setAllTenants(data||[]));
+    } else if (tenant) {
+      setAllTenants([tenant]);
+    }
+  }, [profile, tenant]);
+
+  const { data, status, lastSync, lastScored, refresh } = useData(activeTenant, isDemo);
+
+  if (session === undefined) return <div className="login-wrap"><div className="loader"/></div>;
+  if (!session) return <Login signIn={signIn} />;
+
+  const pages = {
+    dashboard: <DashboardPage data={data} />,
+    accounts:  <AccountsPage data={data} />,
+    crew:      <CrewPage data={data} />,
+    issues:    <IssuesPage data={data} />,
+    closeouts: <CloseoutsPage data={data} />,
+    actions:   <ActionsPage data={data} />,
+    admin:     <AdminPage />,
+    settings:  <SettingsPage tenant={activeTenant} profile={profile} />,
+  };
+
+  return (
+    <div className="app">
+      <Sidebar
+        page={page} onNav={setPage}
+        tenant={activeTenant} allTenants={allTenants}
+        onSwitchTenant={setActiveTenant}
+        profile={profile} data={data}
+        onSignOut={signOut}
+      />
+      <div className="main">
+        <Topbar page={page} status={status} lastSync={lastSync} lastScored={lastScored} onRefresh={refresh} />
+        {pages[page] || <DashboardPage data={data} />}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.render(<App />, document.getElementById('root'));
+</script>
+</body>
+</html>
